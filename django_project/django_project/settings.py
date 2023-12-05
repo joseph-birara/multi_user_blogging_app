@@ -123,8 +123,11 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+# settings.py
+
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-MIDIA_URL = '/media/'
+MEDIA_URL = '/media/'
+
 
 
 # Default primary key field type

@@ -1,41 +1,73 @@
-from django.shortcuts import render
-
+from typing import Any
+from django.db.models.query import QuerySet
+from django.forms.models import BaseModelForm
+from django.views.generic import DeleteView,  UpdateView,ListView, DetailView, CreateView
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
-
+from django.contrib.auth.mixins import LoginRequiredMixin,UserPassesTestMixin
 from .models import Post
-# dummy blogs
-blog_posts = [
-    {
-        'title': 'Introduction to Python Programming',
-        'content': 'Python is a versatile programming language...',
-        'author': 'John Doe',
-        'publication_date': '2023-01-01',
-    },
-    {
-        'title': 'Getting Started with Django',
-        'content': 'Django is a high-level web framework for Python...',
-        'author': 'Jane Smith',
-        'publication_date': '2023-01-05',
-    },
-    {
-        'title': 'Python Tips and Tricks',
-        'content': 'Here are some useful Python tips and tricks...',
-        'author': 'Bob Johnson',
-        'publication_date': '2023-02-10',
-    },
-    # Add more blog posts as needed
-]
-
+from django.contrib.auth.models import User
 
 # Create your views here.
 
 def home(request):
     context = {
-        'posts':Post.objects.all()
+        'posts': Post.objects.all()
     }
-    return render(request, 'blog/home.html',context)
+    return render(request, 'blog/home.html', context)
 
+class PostListView(ListView):
+    model = Post
+    template_name = 'blog/home.html'
+    context_object_name = 'posts'
+    ordering = ['-date_posted']
+    paginate_by = 4
+
+# particular user
+class UserPostListView(ListView):
+    model = Post
+    template_name = 'blog/user_posts.html'
+    context_object_name = 'posts'
+    ordering = ['-date_posted']
+    paginate_by = 4
+    def get_queryset(self):
+        user = get_object_or_404(User, username= self.kwargs.get('username') )
+        
+        return Post.objects.filter(author = user).order_by('-date_posted')
+
+class PostDetailView(DetailView):
+    model = Post
+    # template_name = 'blog/home.html'
+    # context_object_name = 'posts'
+    # ordering = ['-date_posted']
+class PostDeleteView(LoginRequiredMixin,UserPassesTestMixin,DeleteView):
+    model = Post
+    success_url = '/'
+    def test_func(self):
+        post = self.get_object()
+        if self.request.user == post.author:
+            return True
+        return False
+    
+
+class PostCreateView(LoginRequiredMixin, CreateView):
+    model = Post
+    fields = ['title', 'content']
+
+    def form_valid(self, form: BaseModelForm) -> HttpResponse:
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+class PostUpdateView(LoginRequiredMixin,UserPassesTestMixin, UpdateView):
+    model = Post
+    fields = ['title', 'content']
+
+    def form_valid(self, form: BaseModelForm) -> HttpResponse:
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+    def test_func(self):
+        post = self.get_object()
+        if self.request.user == post.author:
+            return True
+        return False
 def about(request):
     return render(request, 'blog/about.html')
-    
-    
